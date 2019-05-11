@@ -69,8 +69,8 @@ class Blockchain {
             block.previousBlockHash = self.chain[height - 1] ? self.chain[height - 1].hash : null;
             block.height = height;
             block.time = new Date().getTime().toString().slice(0,-3);
-            block.hash = await SHA256(JSON.stringify(block));
-            block.hash && (block.height === self.chain.length) && block.time ? resolve(block) : reject(new Error('Cannot add invalid block.'));
+            block.hash = await SHA256(JSON.stringify(block)).toString();
+            block.hash && (block.hash.length === 255) && (block.height === self.chain.length) && block.time ? resolve(block) : reject(new Error('Cannot add invalid block.'));
         }).then(block => {
             this.chain.push(block);
             this.height = this.chain.length - 1;
@@ -118,7 +118,7 @@ class Blockchain {
             if ((currentTime - requestTime) >= (5 * 60)) reject(new Error('Request timed out.'));
             if (!bitcoinMessage.verify(message, address, signature)) reject(new Error('Invalid message.'));
             // add block to chain & resolve
-            let block = new BlockClass.Block({data: star});
+            let block = new BlockClass.Block(star);
             block.owner = address;
             self._addBlock(block);
             resolve(block);             
@@ -180,7 +180,7 @@ class Blockchain {
         return new Promise(async (resolve, reject) => {
             self.chain.forEach(block => {
                 if (block.validate()) {
-                    if (block.previousBlockHash !== self.chain[block.height - 1].hash) {
+                    if ((block.height > 0) && (block.previousBlockHash !== self.chain[block.height - 1].hash)) {
                         errorLog.push(new Error(`Invalid link: Block #${block.height} not linked to the hash of block #${block.height - 1}.`));
                     }
                 } else {
