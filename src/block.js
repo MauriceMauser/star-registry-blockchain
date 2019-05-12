@@ -16,9 +16,11 @@ class Block {
 
     // Constructor - argument data will be the object containing the transaction data
 	constructor(data){
-		this.hash = null;                                           // Hash of the block
+        let star = data.star && data.star.dec && { ...data.star, dec: data.star.dec.replace(/′/, '\'').replace(/″/, '\"') }; // deal with ascii limitations
+		data = star ? { ...data, star } : data;
+        this.hash = null;                                           // Hash of the block
 		this.height = 0;                                            // Block Height (consecutive number of each block)
-		this.body = Buffer(JSON.stringify(data)).toString('hex');   // Will contain the transactions stored in the block, by default it will encode the data
+		this.body = Buffer.from(JSON.stringify(data), 'ascii').toString('hex'); // Will contain the transactions stored in the block, by default it will encode the data
 		this.time = 0;                                              // Timestamp for the Block creation
 		this.previousBlockHash = null;                              // Reference to the previous Block Hash
     }
@@ -39,10 +41,9 @@ class Block {
         let self = this;
         return new Promise(async (resolve, reject) => {
             // Save in auxiliary variable the current block hash
-            let hash = self.hash;
+            const hash = self.hash;
             // Recalculate the hash of the Block
-            self.hash = null;
-            self.hash = await SHA256(JSON.stringify(self)).toString();
+            self.hash = await SHA256(JSON.stringify({ ...self, hash: null })).toString();
             // Comparing if the hashes changed
             // Returning the Block is not valid
             // Returning the Block is valid
@@ -60,16 +61,17 @@ class Block {
      *     or Reject with an error.
      */
     getBData() {
+        let self = this;
         return new Promise((resolve, reject) => {
             // Getting the encoded data saved in the Block
-            const hexEncodedString = this.body;
+            const hexEncodedString = self.body;
             // Decoding the data to retrieve the JSON representation of the object
             const decodedString = hex2ascii(hexEncodedString);
             // Parse the data to an object to be retrieved.
             const decodedObject = JSON.parse(decodedString);
 
             // Resolve with the data if the object isn't the Genesis block
-            decodedObject.height > 0 ? resolve(decodedObject) : reject(new Error('genesis block'));
+            self.height > 0 ? resolve(decodedObject) : reject(new Error('genesis block'));
 
         });
     }

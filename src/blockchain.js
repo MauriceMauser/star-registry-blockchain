@@ -70,10 +70,13 @@ class Blockchain {
             block.height = height;
             block.time = new Date().getTime().toString().slice(0,-3);
             block.hash = await SHA256(JSON.stringify(block)).toString();
-            block.hash && (block.hash.length === 255) && (block.height === self.chain.length) && block.time ? resolve(block) : reject(new Error('Cannot add invalid block.'));
-        }).then(block => {
+            block.hash && (block.hash.length === 64) && (block.height === self.chain.length) && block.time ? resolve(block) : reject(new Error('Cannot add invalid block.'));
+        })
+        .catch(error => console.log('[ERROR] ', error)) 
+        .then(block => {
             this.chain.push(block);
             this.height = this.chain.length - 1;
+            return block;
         });
     }
 
@@ -118,9 +121,9 @@ class Blockchain {
             if ((currentTime - requestTime) >= (5 * 60)) reject(new Error('Request timed out.'));
             if (!bitcoinMessage.verify(message, address, signature)) reject(new Error('Invalid message.'));
             // add block to chain & resolve
-            let block = new BlockClass.Block(star);
+            let block = new BlockClass.Block({ star });
             block.owner = address;
-            self._addBlock(block);
+            block = await self._addBlock(block)
             resolve(block);             
         });
     }
@@ -160,10 +163,12 @@ class Blockchain {
     getStarsByWalletAddress (address) {
         let self = this;
         let stars = [];
-        return new Promise((resolve, reject) => {
-            let blocksByOwner = this.chain.filter(block => block.owner === address);
-            if (blocksByOwner.length === 0) reject(new Error('Address not found.'));
-            stars = blocksByOwner.map(block => JSON.parse(hex2ascii(block.body)));
+        // validate chain
+        this.validateChain().then(errorLog => errorLog.forEach(error => console.log('[ERROR] ', error)));
+        return new Promise(async (resolve, reject) => {
+            let ownedBlocks = self.chain.filter(block => block.owner === address);
+            if (ownedBlocks.length === 0) reject(new Error('Address not found.'));
+            stars = ownedBlocks.map(block => JSON.parse(hex2ascii(block.body)));
             stars ? resolve(stars) : reject(new Error('Failed to return stars.'));
         });
     }
@@ -178,15 +183,17 @@ class Blockchain {
         let self = this;
         let errorLog = [];
         return new Promise(async (resolve, reject) => {
-            self.chain.forEach(block => {
-                if (block.validate()) {
-                    if ((block.height > 0) && (block.previousBlockHash !== self.chain[block.height - 1].hash)) {
+            for (let block of self.chain) {
+                if (await block.validate()) {
+                    if (block.height < 1) return; // skip genesis block
+                    let prevBlock = self.chain.filter(b => b.height === block.height - 1)[0];
+                    if (block.previousBlockHash !== prevBlock.hash) {
                         errorLog.push(new Error(`Invalid link: Block #${block.height} not linked to the hash of block #${block.height - 1}.`));
                     }
                 } else {
                     errorLog.push(new Error(`Invalid block #${block.height}: ${block.hash}`))
                 }
-            });
+            }
             errorLog.length > 0 ? resolve(errorLog) : reject('No errors detected.');
         });
     }
