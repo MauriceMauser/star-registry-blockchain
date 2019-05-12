@@ -164,7 +164,7 @@ class Blockchain {
         let self = this;
         let stars = [];
         // validate chain
-        this.validateChain().then(errorLog => errorLog.forEach(error => console.log('[ERROR] ', error)));
+        this.validateChain().then(errors => typeof errors === 'string' ? errors.forEach(error => console.log('[ERROR] ', error)));
         return new Promise(async (resolve, reject) => {
             let ownedBlocks = self.chain.filter(block => block.owner === address);
             if (ownedBlocks.length === 0) reject(new Error('Address not found.'));
@@ -185,16 +185,17 @@ class Blockchain {
         return new Promise(async (resolve, reject) => {
             for (let block of self.chain) {
                 if (await block.validate()) {
-                    if (block.height < 1) return; // skip genesis block
-                    let prevBlock = self.chain.filter(b => b.height === block.height - 1)[0];
-                    if (block.previousBlockHash !== prevBlock.hash) {
-                        errorLog.push(new Error(`Invalid link: Block #${block.height} not linked to the hash of block #${block.height - 1}.`));
+                    if (block.height > 0) { // skip genesis block
+                        let prevBlock = self.chain.filter(b => b.height === block.height - 1)[0];
+                        if (block.previousBlockHash !== prevBlock.hash) {
+                            errorLog.push(new Error(`Invalid link: Block #${block.height} not linked to the hash of block #${block.height - 1}.`));
+                        }
                     }
                 } else {
                     errorLog.push(new Error(`Invalid block #${block.height}: ${block.hash}`))
                 }
             }
-            errorLog.length > 0 ? resolve(errorLog) : reject('No errors detected.');
+            errorLog.length > 0 ? resolve(errorLog) : resolve('No errors detected.');
         });
     }
 
