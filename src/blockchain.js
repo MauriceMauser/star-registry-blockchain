@@ -164,7 +164,7 @@ class Blockchain {
         let self = this;
         let stars = [];
         // validate chain
-        this.validateChain().then(errors => typeof errors === 'string' ? errors.forEach(error => console.log('[ERROR] ', error)) : console.log('[SUCCESS] ', errors));
+        this.validateChain().then(errors => typeof errors === 'string' ?  console.log('[SUCCESS] ', errors) : errors.forEach(error => console.log('[ERROR] ', error)));
         return new Promise(async (resolve, reject) => {
             let ownedBlocks = self.chain.filter(block => block.owner === address);
             if (ownedBlocks.length === 0) reject(new Error('Address not found.'));
