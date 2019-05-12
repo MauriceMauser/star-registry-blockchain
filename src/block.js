@@ -16,7 +16,7 @@ class Block {
 
     // Constructor - argument data will be the object containing the transaction data
 	constructor(data){
-        let star = data.star && data.star.dec && { ...data.star, dec: data.star.dec.replace(/′/, '\'').replace(/″/, '\"') }; // deal with ascii limitations
+        let star = data.star && data.star.dec && { ...data.star, dec: data.star.dec.replace(/′/, '\'').replace(/″/, '\'\'') }; // deal with ascii limitations
 		data = star ? { ...data, star } : data;
         this.hash = null;                                           // Hash of the block
 		this.height = 0;                                            // Block Height (consecutive number of each block)
